@@ -109,10 +109,10 @@ type BinomialOpts struct {
 	// Loops defines whether loops are allowed.
 	Loops bool
 
-	// MultiEdges defines whether multiple edges are allowed. If
+	// Multiedges defines whether multiple edges are allowed. If
 	// true, two or more edges with the same tail vertex and the
 	// same head vertex are allowed.
-	MultiEdges bool
+	Multiedges bool
 
 	// Directed defines whether the generated graphs are directed.
 	Directed bool
@@ -172,7 +172,7 @@ func (b *Binomial) Graph() <-chan Edge {
 			for range b.opts.N {
 				if b.rand.Float64() < b.opts.P {
 					ihead := start + b.rand.IntN(b.opts.Vertices-start)
-					if !b.opts.MultiEdges {
+					if !b.opts.Multiedges {
 						if _, found := heads[ihead]; found {
 							continue
 						}

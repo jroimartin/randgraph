@@ -161,7 +161,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          2,
 				P:          1,
 				Loops:      true,
-				MultiEdges: true,
+				Multiedges: true,
 			},
 			want: []Edge{
 				{V0: "0"},
@@ -176,7 +176,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          2,
 				P:          1,
 				Loops:      false,
-				MultiEdges: true,
+				Multiedges: true,
 			},
 			want: []Edge{
 				{V0: "0"},
@@ -189,7 +189,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          2,
 				P:          1,
 				Loops:      false,
-				MultiEdges: false,
+				Multiedges: false,
 			},
 			want: []Edge{
 				{V0: "0"},
@@ -202,7 +202,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          2,
 				P:          1,
 				Loops:      false,
-				MultiEdges: true,
+				Multiedges: true,
 			},
 			want: []Edge{
 				{V0: "0"},
@@ -218,7 +218,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          2,
 				P:          1,
 				Loops:      false,
-				MultiEdges: false,
+				Multiedges: false,
 			},
 			want: []Edge{
 				{V0: "0"},
@@ -233,7 +233,7 @@ func TestBinomial_Graph(t *testing.T) {
 				N:          1,
 				P:          1,
 				Loops:      false,
-				MultiEdges: false,
+				Multiedges: false,
 				Directed:   true,
 			},
 			want: []Edge{
