@@ -19,15 +19,16 @@ func TestRandGraph_Graph(t *testing.T) {
 			V1: "v1",
 		},
 		{
-			V0: "v1",
-			V1: "v2",
+			V0:       "v1",
+			V1:       "v2",
+			Directed: true,
 		},
 		{
 			V0: "v2",
 		},
 	}
 
-	r := New(newTestSource(want, false))
+	r := New(newTestSource(want))
 
 	var got []Edge
 	for edge := range r.Graph() {
@@ -39,29 +40,25 @@ func TestRandGraph_Graph(t *testing.T) {
 	}
 }
 
-var validText = regexp.MustCompile(`(?m)^(".+"( ".+")?\n)+$`)
+var validText = regexp.MustCompile(`(?m)^(\w+( -[->] \w+)?\n)+$`)
 
 func TestRandGraph_Write(t *testing.T) {
 	edges := []Edge{
 		{
-			V0: "v0",
-			V1: "v1",
+			V0:       "v0",
+			V1:       "v1",
+			Directed: true,
 		},
 		{
-			V0: "v2 space",
-			V1: "v3\"quote",
+			V0: "v1",
+			V1: "v2",
 		},
 		{
-			V0: "v4",
-		},
-		{
-			V0: "v5 space",
-		},
-		{
-			V0: "v6\"quote",
+			V0: "v2",
 		},
 	}
-	r := New(newTestSource(edges, false))
+
+	r := New(newTestSource(edges))
 	buf := &bytes.Buffer{}
 	r.Write(buf)
 	out := buf.String()
@@ -70,59 +67,30 @@ func TestRandGraph_Write(t *testing.T) {
 	}
 }
 
-var (
-	validDOTGraph   = regexp.MustCompile(`(?m)^graph {\n(  ".+"( -- ".+")?\n)+}$`)
-	validDOTDigraph = regexp.MustCompile(`(?m)^digraph {\n(  ".+"( -> ".+")?\n)+}$`)
-)
+var validDOT = regexp.MustCompile(`(?m)^digraph {\n(  "\w+"( -> "\w+"( \[dir = none\])?)?\n)+}$`)
 
 func TestRandGraph_WriteDOT(t *testing.T) {
 	edges := []Edge{
 		{
-			V0: "v0",
-			V1: "v1",
+			V0:       "v0",
+			V1:       "v1",
+			Directed: true,
 		},
 		{
-			V0: "v2 space",
-			V1: "v3\"quote",
+			V0: "v1",
+			V1: "v2",
 		},
 		{
-			V0: "v4",
-		},
-		{
-			V0: "v5 space",
-		},
-		{
-			V0: "v6\"quote",
+			V0: "v2",
 		},
 	}
 
-	tests := []struct {
-		name     string
-		directed bool
-		re       *regexp.Regexp
-	}{
-		{
-			name:     "graph",
-			directed: false,
-			re:       validDOTGraph,
-		},
-		{
-			name:     "digraph",
-			directed: true,
-			re:       validDOTDigraph,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := New(newTestSource(edges, tt.directed))
-			buf := &bytes.Buffer{}
-			r.WriteDOT(buf)
-			out := buf.String()
-			if !tt.re.MatchString(out) {
-				t.Errorf("malformed output:\n%v", out)
-			}
-		})
+	r := New(newTestSource(edges))
+	buf := &bytes.Buffer{}
+	r.WriteDOT(buf)
+	out := buf.String()
+	if !validDOT.MatchString(out) {
+		t.Errorf("malformed output:\n%v", out)
 	}
 }
 
@@ -258,6 +226,22 @@ func TestBinomial_Graph(t *testing.T) {
 				{V0: "1"},
 			},
 		},
+		{
+			name: "directed",
+			opts: BinomialOpts{
+				Vertices:   2,
+				N:          1,
+				P:          1,
+				Loops:      false,
+				MultiEdges: false,
+				Directed:   true,
+			},
+			want: []Edge{
+				{V0: "0"},
+				{V0: "0", V1: "1", Directed: true},
+				{V0: "1"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -369,48 +353,12 @@ func TestLabel(t *testing.T) {
 	}
 }
 
-func TestBinomial_Directed(t *testing.T) {
-	tests := []struct {
-		name string
-		opts BinomialOpts
-		want bool
-	}{
-		{
-			name: "directed",
-			opts: BinomialOpts{
-				Directed: true,
-			},
-			want: true,
-		},
-		{
-			name: "undirected",
-			opts: BinomialOpts{
-				Directed: false,
-			},
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b, err := NewBinomial(tt.opts)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got := b.Directed(); got != tt.want {
-				t.Errorf("unexpected directed value: %v", got)
-			}
-		})
-	}
-}
-
 type testSource struct {
-	edges    []Edge
-	directed bool
+	edges []Edge
 }
 
-func newTestSource(edges []Edge, directed bool) *testSource {
-	return &testSource{edges: edges, directed: directed}
+func newTestSource(edges []Edge) *testSource {
+	return &testSource{edges: edges}
 }
 
 func (src testSource) Graph() <-chan Edge {
@@ -422,10 +370,6 @@ func (src testSource) Graph() <-chan Edge {
 		close(ch)
 	}()
 	return ch
-}
-
-func (src testSource) Directed() bool {
-	return src.directed
 }
 
 func testRand() *rand.Rand {
