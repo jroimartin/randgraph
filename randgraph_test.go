@@ -40,33 +40,6 @@ func TestRandGraph_Graph(t *testing.T) {
 	}
 }
 
-var validText = regexp.MustCompile(`(?m)^(\w+( -[->] \w+)?\n)+$`)
-
-func TestRandGraph_Write(t *testing.T) {
-	edges := []Edge{
-		{
-			V0:       "v0",
-			V1:       "v1",
-			Directed: true,
-		},
-		{
-			V0: "v1",
-			V1: "v2",
-		},
-		{
-			V0: "v2",
-		},
-	}
-
-	r := New(newTestSource(edges))
-	buf := &bytes.Buffer{}
-	r.Write(buf)
-	out := buf.String()
-	if !validText.MatchString(out) {
-		t.Errorf("malformed output:\n%v", out)
-	}
-}
-
 var validDOT = regexp.MustCompile(`(?m)^digraph {\n(  "\w+"( -> "\w+"( \[dir = none\])?)?\n)+}$`)
 
 func TestRandGraph_WriteDOT(t *testing.T) {

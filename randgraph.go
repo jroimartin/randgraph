@@ -44,35 +44,6 @@ func (r *RandGraph) Graph() <-chan Edge {
 	return r.src.Graph()
 }
 
-// Write writes a random graph to w in the following format:
-//
-//	v0 -- v1
-//	v1 -> v2
-//	v2
-//	...
-//
-// Each line represents either a vertex or an edge. A vertex is
-// defined by a line that contains its label. An edge is defined by a
-// line that contains the labels of the two connected vertices,
-// separated by a space, an edge operation and another space. The edge
-// operation is '--' for undirected edges and '->' for directed edges.
-func (r *RandGraph) Write(w io.Writer) {
-	for edge := range r.src.Graph() {
-		var edgeop string
-		if edge.Directed {
-			edgeop = "->"
-		} else {
-			edgeop = "--"
-		}
-
-		if edge.V1 != "" {
-			fmt.Fprintf(w, "%v %v %v\n", edge.V0, edgeop, edge.V1)
-		} else {
-			fmt.Fprintf(w, "%v\n", edge.V0)
-		}
-	}
-}
-
 // WriteDOT writes a random graph to w using the [DOT] language.
 //
 // [DOT]: https://graphviz.org/doc/info/lang.html
