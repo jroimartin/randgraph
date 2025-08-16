@@ -122,7 +122,7 @@ func NewBinomial(opts BinomialOpts) (*Binomial, error) {
 }
 
 func (b *Binomial) Graph() <-chan Edge {
-	ch := make(chan Edge)
+	ch := make(chan Edge, b.opts.N)
 	go func() {
 		for itail := range b.opts.Vertices {
 			tail := label(b.opts.Labels, itail)
