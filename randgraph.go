@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 // Package randgraph implements random graph generators. Graphs are
-// represented as streams of edges, so full graphs are not stored in
-// memory, enabling the generation of graphs of arbitrary size.
+// represented as streams of vertices and edges, so full graphs are
+// not stored in memory, enabling the generation of graphs of
+// arbitrary size.
 package randgraph
 
 import (
