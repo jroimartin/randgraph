@@ -15,17 +15,26 @@ import (
 	"strconv"
 )
 
-// An Edge connects two vertices, V0 and V1. If directed, V0 is the
-// tail vertex and V1 is the head vertex.
+// A Vertex is a vertex of a graph.
+type Vertex struct {
+	ID    int
+	Label any
+}
+
+// An Edge is an edge of a graph that connects two vertices with IDs
+// V0 and V1. If directed, V0 is the tail vertex and V1 is the head
+// vertex.
 type Edge struct {
-	V0, V1   string
+	V0, V1   int
 	Directed bool
+	Label    any
 }
 
 // A Source is a source of random graphs represented as streams of
-// edges.
+// vertices and edges.
 type Source interface {
-	Graph() <-chan Edge
+	Vertices() <-chan Vertex
+	Edges() <-chan Edge
 }
 
 // A RandGraph wraps a [Source] to provide higher-level functionality.
@@ -39,9 +48,14 @@ func New(src Source) *RandGraph {
 	return &RandGraph{src: src}
 }
 
-// Graph returns a random graph represented as a stream of edges.
-func (r *RandGraph) Graph() <-chan Edge {
-	return r.src.Graph()
+// Vertices returns a stream of random vertices.
+func (r *RandGraph) Vertices() <-chan Vertex {
+	return r.src.Vertices()
+}
+
+// Edges returns a stream of random edges.
+func (r *RandGraph) Edges() <-chan Edge {
+	return r.src.Edges()
 }
 
 // WriteDOT writes a random graph to w using the [DOT] language.
@@ -50,17 +64,24 @@ func (r *RandGraph) Graph() <-chan Edge {
 func (r *RandGraph) WriteDOT(w io.Writer) {
 	fmt.Fprintln(w, "digraph {")
 
-	for edge := range r.Graph() {
-		attr := ""
-		if !edge.Directed {
-			attr = " [dir = none]"
+	for v := range r.Vertices() {
+		lbl := ""
+		if v.Label != nil {
+			lbl = fmt.Sprint(v.Label)
 		}
+		fmt.Fprintf(w, "  %v [label=%q]\n", v.ID, lbl)
+	}
 
-		if edge.V1 != "" {
-			fmt.Fprintf(w, "  %q -> %q%v\n", edge.V0, edge.V1, attr)
-		} else {
-			fmt.Fprintf(w, "  %q\n", edge.V0)
+	for e := range r.Edges() {
+		dir := "none"
+		if e.Directed {
+			dir = "forward"
 		}
+		lbl := ""
+		if e.Label != nil {
+			lbl = fmt.Sprint(e.Label)
+		}
+		fmt.Fprintf(w, "  %v -> %v [dir=%q] [label=%q]\n", e.V0, e.V1, dir, lbl)
 	}
 
 	fmt.Fprintln(w, "}")
@@ -121,35 +142,47 @@ func NewBinomial(opts BinomialOpts) (*Binomial, error) {
 	return b, nil
 }
 
-func (b *Binomial) Graph() <-chan Edge {
-	ch := make(chan Edge, b.opts.N)
+func (b *Binomial) Vertices() <-chan Vertex {
+	ch := make(chan Vertex)
 	go func() {
-		for itail := range b.opts.Vertices {
-			tail := label(b.opts.Labels, itail)
-			ch <- Edge{V0: tail}
+		for i := range b.opts.Vertices {
+			ch <- Vertex{ID: i, Label: label(b.opts.Labels, i)}
+		}
+		close(ch)
+	}()
+	return ch
+}
 
+func (b *Binomial) Edges() <-chan Edge {
+	ch := make(chan Edge)
+	go func() {
+		for tail := range b.opts.Vertices {
 			var start int
 			if b.opts.Loops {
 				start = 0
 			} else {
-				if itail == b.opts.Vertices-1 {
+				if tail == b.opts.Vertices-1 {
 					// No possible heads.
 					break
 				}
-				start = itail + 1
+				start = tail + 1
 			}
 
 			heads := make(map[int]struct{})
 			for range b.opts.N {
 				if b.rand.Float64() < b.opts.P {
-					ihead := start + b.rand.IntN(b.opts.Vertices-start)
+					head := start + b.rand.IntN(b.opts.Vertices-start)
 					if !b.opts.Multiedges {
-						if _, found := heads[ihead]; found {
+						if _, found := heads[head]; found {
 							continue
 						}
-						heads[ihead] = struct{}{}
+						heads[head] = struct{}{}
 					}
-					ch <- Edge{V0: tail, V1: label(b.opts.Labels, ihead), Directed: b.opts.Directed}
+					ch <- Edge{
+						V0:       tail,
+						V1:       head,
+						Directed: b.opts.Directed,
+					}
 				}
 			}
 		}
@@ -158,13 +191,13 @@ func (b *Binomial) Graph() <-chan Edge {
 	return ch
 }
 
-func label(labels []string, n int) string {
+func label(labels []string, id int) string {
 	if len(labels) == 0 {
-		return strconv.Itoa(n)
+		return strconv.Itoa(id)
 	}
-	i := n % len(labels)
-	if n < len(labels) {
+	i := id % len(labels)
+	if id < len(labels) {
 		return labels[i]
 	}
-	return labels[i] + strconv.Itoa(n)
+	return labels[i] + strconv.Itoa(id)
 }

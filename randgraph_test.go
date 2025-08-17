@@ -12,53 +12,101 @@ import (
 	"testing"
 )
 
-func TestRandGraph_Graph(t *testing.T) {
-	want := []Edge{
+func TestRandGraph_Vertices(t *testing.T) {
+	want := []Vertex{
 		{
-			V0: "v0",
-			V1: "v1",
+			ID:    0,
+			Label: "v0",
 		},
 		{
-			V0:       "v1",
-			V1:       "v2",
-			Directed: true,
+			ID: 1,
 		},
 		{
-			V0: "v2",
+			ID:    2,
+			Label: "v2",
 		},
 	}
 
-	r := New(newTestSource(want))
+	r := New(newTestSource(want, nil))
 
-	var got []Edge
-	for edge := range r.Graph() {
-		got = append(got, edge)
+	var got []Vertex
+	for v := range r.Vertices() {
+		got = append(got, v)
 	}
 
 	if !slices.Equal(got, want) {
-		t.Errorf("unexpected edges: got: %v want: %v", got, want)
+		t.Errorf("unexpected vertices: got: %v, want: %v", got, want)
 	}
 }
 
-var validDOT = regexp.MustCompile(`(?m)^digraph {\n(  "\w+"( -> "\w+"( \[dir = none\])?)?\n)+}$`)
-
-func TestRandGraph_WriteDOT(t *testing.T) {
-	edges := []Edge{
+func TestRandGraph_Edges(t *testing.T) {
+	want := []Edge{
 		{
-			V0:       "v0",
-			V1:       "v1",
+			V0:    0,
+			V1:    1,
+			Label: "e0",
+		},
+		{
+			V0:       1,
+			V1:       2,
 			Directed: true,
 		},
 		{
-			V0: "v1",
-			V1: "v2",
-		},
-		{
-			V0: "v2",
+			V0:       2,
+			V1:       0,
+			Directed: true,
+			Label:    "e2",
 		},
 	}
 
-	r := New(newTestSource(edges))
+	r := New(newTestSource(nil, want))
+
+	var got []Edge
+	for e := range r.Edges() {
+		got = append(got, e)
+	}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("unexpected edges: got: %v, want: %v", got, want)
+	}
+}
+
+var validDOT = regexp.MustCompile(`(?m)^digraph {\n(  \d+ \[label="[^"]*"\]\n)+(  \d -> \d \[dir="(forward|none)"\] \[label="[^"]*"\]\n)+}$`)
+
+func TestRandGraph_WriteDOT(t *testing.T) {
+	vertices := []Vertex{
+		{
+			ID:    0,
+			Label: "v0",
+		},
+		{
+			ID: 1,
+		},
+		{
+			ID:    2,
+			Label: "v2",
+		},
+	}
+	edges := []Edge{
+		{
+			V0:    0,
+			V1:    1,
+			Label: "e0",
+		},
+		{
+			V0:       1,
+			V1:       2,
+			Directed: true,
+		},
+		{
+			V0:       2,
+			V1:       0,
+			Directed: true,
+			Label:    "e2",
+		},
+	}
+
+	r := New(newTestSource(vertices, edges))
 	buf := &bytes.Buffer{}
 	r.WriteDOT(buf)
 	out := buf.String()
@@ -121,7 +169,7 @@ func TestNewBinomial(t *testing.T) {
 	}
 }
 
-func TestBinomial_Graph(t *testing.T) {
+func TestBinomial(t *testing.T) {
 	tests := []struct {
 		name string
 		opts BinomialOpts
@@ -137,9 +185,8 @@ func TestBinomial_Graph(t *testing.T) {
 				Multiedges: true,
 			},
 			want: []Edge{
-				{V0: "0"},
-				{V0: "0", V1: "0"},
-				{V0: "0", V1: "0"},
+				{V0: 0, V1: 0},
+				{V0: 0, V1: 0},
 			},
 		},
 		{
@@ -151,9 +198,7 @@ func TestBinomial_Graph(t *testing.T) {
 				Loops:      false,
 				Multiedges: true,
 			},
-			want: []Edge{
-				{V0: "0"},
-			},
+			want: []Edge{},
 		},
 		{
 			name: "1 vertex",
@@ -164,9 +209,7 @@ func TestBinomial_Graph(t *testing.T) {
 				Loops:      false,
 				Multiedges: false,
 			},
-			want: []Edge{
-				{V0: "0"},
-			},
+			want: []Edge{},
 		},
 		{
 			name: "2 vertices with multiedges",
@@ -178,10 +221,8 @@ func TestBinomial_Graph(t *testing.T) {
 				Multiedges: true,
 			},
 			want: []Edge{
-				{V0: "0"},
-				{V0: "0", V1: "1"},
-				{V0: "0", V1: "1"},
-				{V0: "1"},
+				{V0: 0, V1: 1},
+				{V0: 0, V1: 1},
 			},
 		},
 		{
@@ -194,9 +235,7 @@ func TestBinomial_Graph(t *testing.T) {
 				Multiedges: false,
 			},
 			want: []Edge{
-				{V0: "0"},
-				{V0: "0", V1: "1"},
-				{V0: "1"},
+				{V0: 0, V1: 1},
 			},
 		},
 		{
@@ -210,9 +249,7 @@ func TestBinomial_Graph(t *testing.T) {
 				Directed:   true,
 			},
 			want: []Edge{
-				{V0: "0"},
-				{V0: "0", V1: "1", Directed: true},
-				{V0: "1"},
+				{V0: 0, V1: 1, Directed: true},
 			},
 		},
 	}
@@ -225,18 +262,18 @@ func TestBinomial_Graph(t *testing.T) {
 			}
 
 			var got []Edge
-			for edge := range b.Graph() {
-				got = append(got, edge)
+			for e := range b.Edges() {
+				got = append(got, e)
 			}
 
 			if !slices.Equal(got, tt.want) {
-				t.Errorf("unexpected edges: got: %v want: %v", got, tt.want)
+				t.Errorf("unexpected edges: got: %v, want: %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestBinomial_Graph_edgeless(t *testing.T) {
+func TestBinomial_edgeless(t *testing.T) {
 	const numVertices = 5
 
 	b := &Binomial{
@@ -248,20 +285,24 @@ func TestBinomial_Graph_edgeless(t *testing.T) {
 		rand: testRand(),
 	}
 
-	var got []Edge
-	for edge := range b.Graph() {
-		if edge.V1 != "" {
-			t.Errorf("unexpected edge: vertex %v is connected with %v", edge.V0, edge.V1)
-		}
-		got = append(got, edge)
+	var gotVs []Vertex
+	for v := range b.Vertices() {
+		gotVs = append(gotVs, v)
+	}
+	if n := len(gotVs); n != numVertices {
+		t.Errorf("unexpected number of vertices: got: %v, want: %v", n, numVertices)
 	}
 
-	if len(got) != numVertices {
-		t.Errorf("unexpected number of vertices: got: %v want: %v", len(got), numVertices)
+	var gotEs []Edge
+	for e := range b.Edges() {
+		gotEs = append(gotEs, e)
+	}
+	if n := len(gotEs); n != 0 {
+		t.Errorf("expected number of edges: got: %v, want: 0", n)
 	}
 }
 
-func TestBinomial_Graph_order_zero(t *testing.T) {
+func TestBinomial_order_zero(t *testing.T) {
 	b := &Binomial{
 		opts: BinomialOpts{
 			Vertices: 0,
@@ -271,74 +312,96 @@ func TestBinomial_Graph_order_zero(t *testing.T) {
 		rand: testRand(),
 	}
 
-	var got []Edge
-	for edge := range b.Graph() {
-		got = append(got, edge)
+	var gotVs []Vertex
+	for v := range b.Vertices() {
+		gotVs = append(gotVs, v)
+	}
+	if n := len(gotVs); n != 0 {
+		t.Errorf("unexpected number of vertices: got: %v, want: 0", n)
 	}
 
-	if len(got) != 0 {
-		t.Errorf("expected an order-zero graph: got %v vertices", len(got))
+	var gotEs []Edge
+	for e := range b.Edges() {
+		gotEs = append(gotEs, e)
+	}
+	if n := len(gotEs); n != 0 {
+		t.Errorf("expected number of edges: got: %v, want: 0", n)
 	}
 }
 
 func TestLabel(t *testing.T) {
 	tests := []struct {
 		labels []string
-		n      int
+		id     int
 		want   string
 	}{
 		{
 			labels: []string{"A", "B"},
-			n:      0,
+			id:     0,
 			want:   "A",
 		},
 		{
 			labels: []string{"A", "B"},
-			n:      1,
+			id:     1,
 			want:   "B",
 		},
 		{
 			labels: []string{"A", "B"},
-			n:      2,
+			id:     2,
 			want:   "A2",
 		},
 		{
 			labels: []string{"A", "B"},
-			n:      5,
+			id:     5,
 			want:   "B5",
 		},
 		{
 			labels: nil,
-			n:      2,
+			id:     2,
 			want:   "2",
 		},
 		{
 			labels: []string{},
-			n:      5,
+			id:     5,
 			want:   "5",
 		},
 	}
 	for _, tt := range tests {
-		got := label(tt.labels, tt.n)
+		got := label(tt.labels, tt.id)
 		if got != tt.want {
-			t.Errorf("unexpected label: got: %q want: %q", got, tt.want)
+			t.Errorf("unexpected label: got: %q, want: %q", got, tt.want)
 		}
 	}
 }
 
 type testSource struct {
-	edges []Edge
+	vertices []Vertex
+	edges    []Edge
 }
 
-func newTestSource(edges []Edge) *testSource {
-	return &testSource{edges: edges}
+func newTestSource(vertices []Vertex, edges []Edge) testSource {
+	return testSource{
+		vertices: vertices,
+		edges:    edges,
+	}
 }
 
-func (src testSource) Graph() <-chan Edge {
+func (src testSource) Vertices() <-chan Vertex {
+	ch := make(chan Vertex)
+	go func() {
+		for _, v := range src.vertices {
+			ch <- v
+		}
+		close(ch)
+	}()
+	return ch
+
+}
+func (src testSource) Edges() <-chan Edge {
 	ch := make(chan Edge)
 	go func() {
-		for _, edge := range src.edges {
-			ch <- edge
+		for _, e := range src.edges {
+			ch <- e
 		}
 		close(ch)
 	}()
