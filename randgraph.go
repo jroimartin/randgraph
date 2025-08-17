@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
-	"strconv"
 )
 
 // A Vertex is a vertex of a graph.
@@ -65,11 +64,11 @@ func (r *RandGraph) WriteDOT(w io.Writer) {
 	fmt.Fprintln(w, "digraph {")
 
 	for v := range r.Vertices() {
-		lbl := ""
+		label := ""
 		if v.Label != nil {
-			lbl = fmt.Sprint(v.Label)
+			label = fmt.Sprint(v.Label)
 		}
-		fmt.Fprintf(w, "  %v [label=%q]\n", v.ID, lbl)
+		fmt.Fprintf(w, "  %v [label=%q]\n", v.ID, label)
 	}
 
 	for e := range r.Edges() {
@@ -77,11 +76,11 @@ func (r *RandGraph) WriteDOT(w io.Writer) {
 		if e.Directed {
 			dir = "forward"
 		}
-		lbl := ""
+		label := ""
 		if e.Label != nil {
-			lbl = fmt.Sprint(e.Label)
+			label = fmt.Sprint(e.Label)
 		}
-		fmt.Fprintf(w, "  %v -> %v [dir=%q] [label=%q]\n", e.V0, e.V1, dir, lbl)
+		fmt.Fprintf(w, "  %v -> %v [dir=%q] [label=%q]\n", e.V0, e.V1, dir, label)
 	}
 
 	fmt.Fprintln(w, "}")
@@ -109,10 +108,13 @@ type BinomialOpts struct {
 	// Directed defines whether the generated graphs are directed.
 	Directed bool
 
-	// Labels contains the labels used for the vertices. If the
-	// number of vertices exceeds the number of available labels,
-	// then duplicated labels are suffixed with the vertex number.
-	Labels []string
+	// VertexLabel specifies an optional function that returns the
+	// label of a vertex identified by id.
+	VertexLabel func(id int) any
+
+	// EdgeLabel specifies an optional function that returns the
+	// label of an edge connecting v0 and v1.
+	EdgeLabel func(v0, v1 int) any
 }
 
 // Binomial implements the [Source] interface. It generates random
@@ -146,7 +148,11 @@ func (b *Binomial) Vertices() <-chan Vertex {
 	ch := make(chan Vertex)
 	go func() {
 		for i := range b.opts.Vertices {
-			ch <- Vertex{ID: i, Label: label(b.opts.Labels, i)}
+			var label any
+			if b.opts.VertexLabel != nil {
+				label = b.opts.VertexLabel(i)
+			}
+			ch <- Vertex{ID: i, Label: label}
 		}
 		close(ch)
 	}()
@@ -178,10 +184,15 @@ func (b *Binomial) Edges() <-chan Edge {
 						}
 						heads[head] = struct{}{}
 					}
+					var label any
+					if b.opts.EdgeLabel != nil {
+						label = b.opts.EdgeLabel(tail, head)
+					}
 					ch <- Edge{
 						V0:       tail,
 						V1:       head,
 						Directed: b.opts.Directed,
+						Label:    label,
 					}
 				}
 			}
@@ -189,15 +200,4 @@ func (b *Binomial) Edges() <-chan Edge {
 		close(ch)
 	}()
 	return ch
-}
-
-func label(labels []string, id int) string {
-	if len(labels) == 0 {
-		return strconv.Itoa(id)
-	}
-	i := id % len(labels)
-	if id < len(labels) {
-		return labels[i]
-	}
-	return labels[i] + strconv.Itoa(id)
 }

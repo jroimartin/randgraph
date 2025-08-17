@@ -6,9 +6,11 @@ package randgraph
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand/v2"
 	"regexp"
 	"slices"
+	"strconv"
 	"testing"
 )
 
@@ -171,9 +173,10 @@ func TestNewBinomial(t *testing.T) {
 
 func TestBinomial(t *testing.T) {
 	tests := []struct {
-		name string
-		opts BinomialOpts
-		want []Edge
+		name   string
+		opts   BinomialOpts
+		wantVs []Vertex
+		wantEs []Edge
 	}{
 		{
 			name: "1 vertex with loops and multiedges",
@@ -184,7 +187,10 @@ func TestBinomial(t *testing.T) {
 				Loops:      true,
 				Multiedges: true,
 			},
-			want: []Edge{
+			wantVs: []Vertex{
+				{ID: 0},
+			},
+			wantEs: []Edge{
 				{V0: 0, V1: 0},
 				{V0: 0, V1: 0},
 			},
@@ -198,7 +204,10 @@ func TestBinomial(t *testing.T) {
 				Loops:      false,
 				Multiedges: true,
 			},
-			want: []Edge{},
+			wantVs: []Vertex{
+				{ID: 0},
+			},
+			wantEs: []Edge{},
 		},
 		{
 			name: "1 vertex",
@@ -209,7 +218,10 @@ func TestBinomial(t *testing.T) {
 				Loops:      false,
 				Multiedges: false,
 			},
-			want: []Edge{},
+			wantVs: []Vertex{
+				{ID: 0},
+			},
+			wantEs: []Edge{},
 		},
 		{
 			name: "2 vertices with multiedges",
@@ -220,7 +232,11 @@ func TestBinomial(t *testing.T) {
 				Loops:      false,
 				Multiedges: true,
 			},
-			want: []Edge{
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+			},
+			wantEs: []Edge{
 				{V0: 0, V1: 1},
 				{V0: 0, V1: 1},
 			},
@@ -234,9 +250,39 @@ func TestBinomial(t *testing.T) {
 				Loops:      false,
 				Multiedges: false,
 			},
-			want: []Edge{
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+			},
+			wantEs: []Edge{
 				{V0: 0, V1: 1},
 			},
+		},
+		{
+			name: "edgeless",
+			opts: BinomialOpts{
+				Vertices: 5,
+				N:        0,
+				P:        0,
+			},
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+				{ID: 2},
+				{ID: 3},
+				{ID: 4},
+			},
+			wantEs: []Edge{},
+		},
+		{
+			name: "order zero",
+			opts: BinomialOpts{
+				Vertices: 0,
+				N:        1,
+				P:        1,
+			},
+			wantVs: []Vertex{},
+			wantEs: []Edge{},
 		},
 		{
 			name: "directed",
@@ -248,8 +294,52 @@ func TestBinomial(t *testing.T) {
 				Multiedges: false,
 				Directed:   true,
 			},
-			want: []Edge{
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+			},
+			wantEs: []Edge{
 				{V0: 0, V1: 1, Directed: true},
+			},
+		},
+		{
+			name: "vertex label",
+			opts: BinomialOpts{
+				Vertices:   2,
+				N:          1,
+				P:          1,
+				Loops:      false,
+				Multiedges: false,
+				VertexLabel: func(id int) any {
+					return strconv.Itoa(id)
+				},
+			},
+			wantVs: []Vertex{
+				{ID: 0, Label: "0"},
+				{ID: 1, Label: "1"},
+			},
+			wantEs: []Edge{
+				{V0: 0, V1: 1},
+			},
+		},
+		{
+			name: "edge label",
+			opts: BinomialOpts{
+				Vertices:   2,
+				N:          1,
+				P:          1,
+				Loops:      false,
+				Multiedges: false,
+				EdgeLabel: func(v0, v1 int) any {
+					return fmt.Sprintf("%v-%v", v0, v1)
+				},
+			},
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+			},
+			wantEs: []Edge{
+				{V0: 0, V1: 1, Label: "0-1"},
 			},
 		},
 	}
@@ -261,116 +351,22 @@ func TestBinomial(t *testing.T) {
 				rand: testRand(),
 			}
 
-			var got []Edge
-			for e := range b.Edges() {
-				got = append(got, e)
+			var gotVs []Vertex
+			for v := range b.Vertices() {
+				gotVs = append(gotVs, v)
+			}
+			if !slices.Equal(gotVs, tt.wantVs) {
+				t.Errorf("unexpected vertices: got: %v, want: %v", gotVs, tt.wantVs)
 			}
 
-			if !slices.Equal(got, tt.want) {
-				t.Errorf("unexpected edges: got: %v, want: %v", got, tt.want)
+			var gotEs []Edge
+			for e := range b.Edges() {
+				gotEs = append(gotEs, e)
+			}
+			if !slices.Equal(gotEs, tt.wantEs) {
+				t.Errorf("unexpected edges: got: %v, want: %v", gotEs, tt.wantEs)
 			}
 		})
-	}
-}
-
-func TestBinomial_edgeless(t *testing.T) {
-	const numVertices = 5
-
-	b := &Binomial{
-		opts: BinomialOpts{
-			Vertices: numVertices,
-			N:        0,
-			P:        0,
-		},
-		rand: testRand(),
-	}
-
-	var gotVs []Vertex
-	for v := range b.Vertices() {
-		gotVs = append(gotVs, v)
-	}
-	if n := len(gotVs); n != numVertices {
-		t.Errorf("unexpected number of vertices: got: %v, want: %v", n, numVertices)
-	}
-
-	var gotEs []Edge
-	for e := range b.Edges() {
-		gotEs = append(gotEs, e)
-	}
-	if n := len(gotEs); n != 0 {
-		t.Errorf("expected number of edges: got: %v, want: 0", n)
-	}
-}
-
-func TestBinomial_order_zero(t *testing.T) {
-	b := &Binomial{
-		opts: BinomialOpts{
-			Vertices: 0,
-			N:        1,
-			P:        1,
-		},
-		rand: testRand(),
-	}
-
-	var gotVs []Vertex
-	for v := range b.Vertices() {
-		gotVs = append(gotVs, v)
-	}
-	if n := len(gotVs); n != 0 {
-		t.Errorf("unexpected number of vertices: got: %v, want: 0", n)
-	}
-
-	var gotEs []Edge
-	for e := range b.Edges() {
-		gotEs = append(gotEs, e)
-	}
-	if n := len(gotEs); n != 0 {
-		t.Errorf("expected number of edges: got: %v, want: 0", n)
-	}
-}
-
-func TestLabel(t *testing.T) {
-	tests := []struct {
-		labels []string
-		id     int
-		want   string
-	}{
-		{
-			labels: []string{"A", "B"},
-			id:     0,
-			want:   "A",
-		},
-		{
-			labels: []string{"A", "B"},
-			id:     1,
-			want:   "B",
-		},
-		{
-			labels: []string{"A", "B"},
-			id:     2,
-			want:   "A2",
-		},
-		{
-			labels: []string{"A", "B"},
-			id:     5,
-			want:   "B5",
-		},
-		{
-			labels: nil,
-			id:     2,
-			want:   "2",
-		},
-		{
-			labels: []string{},
-			id:     5,
-			want:   "5",
-		},
-	}
-	for _, tt := range tests {
-		got := label(tt.labels, tt.id)
-		if got != tt.want {
-			t.Errorf("unexpected label: got: %q, want: %q", got, tt.want)
-		}
 	}
 }
 
