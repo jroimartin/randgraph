@@ -120,47 +120,40 @@ func TestRandGraph_WriteDOT(t *testing.T) {
 func TestNewBinomial(t *testing.T) {
 	tests := []struct {
 		name       string
-		opts       BinomialOpts
+		v          int
+		n          int
+		p          float64
 		wantNilErr bool
 	}{
 		{
 			name:       "zero",
-			opts:       BinomialOpts{},
 			wantNilErr: true,
 		},
 		{
-			name: "Vertices < 0",
-			opts: BinomialOpts{
-				Vertices: -1,
-			},
+			name:       "v < 0",
+			v:          -1,
 			wantNilErr: false,
 		},
 		{
-			name: "N < 0",
-			opts: BinomialOpts{
-				N: -1,
-			},
+			name:       "n < 0",
+			n:          -1,
 			wantNilErr: false,
 		},
 		{
-			name: "P < 0",
-			opts: BinomialOpts{
-				P: -0.1,
-			},
+			name:       "p < 0",
+			p:          -0.1,
 			wantNilErr: false,
 		},
 		{
-			name: "P > 1",
-			opts: BinomialOpts{
-				P: 1.1,
-			},
+			name:       "p > 1",
+			p:          1.1,
 			wantNilErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b, err := NewBinomial(tt.opts)
+			b, err := NewBinomial(tt.v, tt.n, tt.p)
 			if (err == nil) != tt.wantNilErr {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -173,20 +166,25 @@ func TestNewBinomial(t *testing.T) {
 
 func TestBinomial(t *testing.T) {
 	tests := []struct {
-		name   string
-		opts   BinomialOpts
-		wantVs []Vertex
-		wantEs []Edge
+		name        string
+		v           int
+		n           int
+		p           float64
+		loops       bool
+		multiedges  bool
+		directed    bool
+		vertexLabel func(id int) any
+		edgeLabel   func(v0, v1 int) any
+		wantVs      []Vertex
+		wantEs      []Edge
 	}{
 		{
-			name: "1 vertex with loops and multiedges",
-			opts: BinomialOpts{
-				Vertices:   1,
-				N:          2,
-				P:          1,
-				Loops:      true,
-				Multiedges: true,
-			},
+			name:       "1 vertex with loops and multiedges",
+			v:          1,
+			n:          2,
+			p:          1,
+			loops:      true,
+			multiedges: true,
 			wantVs: []Vertex{
 				{ID: 0},
 			},
@@ -196,14 +194,11 @@ func TestBinomial(t *testing.T) {
 			},
 		},
 		{
-			name: "1 vertex with multiedges",
-			opts: BinomialOpts{
-				Vertices:   1,
-				N:          2,
-				P:          1,
-				Loops:      false,
-				Multiedges: true,
-			},
+			name:       "1 vertex with multiedges",
+			v:          1,
+			n:          2,
+			p:          1,
+			multiedges: true,
 			wantVs: []Vertex{
 				{ID: 0},
 			},
@@ -211,27 +206,20 @@ func TestBinomial(t *testing.T) {
 		},
 		{
 			name: "1 vertex",
-			opts: BinomialOpts{
-				Vertices:   1,
-				N:          2,
-				P:          1,
-				Loops:      false,
-				Multiedges: false,
-			},
+			v:    1,
+			n:    2,
+			p:    1,
 			wantVs: []Vertex{
 				{ID: 0},
 			},
 			wantEs: []Edge{},
 		},
 		{
-			name: "2 vertices with multiedges",
-			opts: BinomialOpts{
-				Vertices:   2,
-				N:          2,
-				P:          1,
-				Loops:      false,
-				Multiedges: true,
-			},
+			name:       "2 vertices with multiedges",
+			v:          2,
+			n:          2,
+			p:          1,
+			multiedges: true,
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
@@ -243,13 +231,9 @@ func TestBinomial(t *testing.T) {
 		},
 		{
 			name: "2 vertices",
-			opts: BinomialOpts{
-				Vertices:   2,
-				N:          2,
-				P:          1,
-				Loops:      false,
-				Multiedges: false,
-			},
+			v:    2,
+			n:    2,
+			p:    1,
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
@@ -260,11 +244,9 @@ func TestBinomial(t *testing.T) {
 		},
 		{
 			name: "edgeless",
-			opts: BinomialOpts{
-				Vertices: 5,
-				N:        0,
-				P:        0,
-			},
+			v:    5,
+			n:    0,
+			p:    0,
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
@@ -275,25 +257,19 @@ func TestBinomial(t *testing.T) {
 			wantEs: []Edge{},
 		},
 		{
-			name: "order zero",
-			opts: BinomialOpts{
-				Vertices: 0,
-				N:        1,
-				P:        1,
-			},
+			name:   "order zero",
+			v:      0,
+			n:      1,
+			p:      1,
 			wantVs: []Vertex{},
 			wantEs: []Edge{},
 		},
 		{
-			name: "directed",
-			opts: BinomialOpts{
-				Vertices:   2,
-				N:          1,
-				P:          1,
-				Loops:      false,
-				Multiedges: false,
-				Directed:   true,
-			},
+			name:     "directed",
+			v:        2,
+			n:        1,
+			p:        1,
+			directed: true,
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
@@ -304,15 +280,11 @@ func TestBinomial(t *testing.T) {
 		},
 		{
 			name: "vertex label",
-			opts: BinomialOpts{
-				Vertices:   2,
-				N:          1,
-				P:          1,
-				Loops:      false,
-				Multiedges: false,
-				VertexLabel: func(id int) any {
-					return strconv.Itoa(id)
-				},
+			v:    2,
+			n:    1,
+			p:    1,
+			vertexLabel: func(id int) any {
+				return strconv.Itoa(id)
 			},
 			wantVs: []Vertex{
 				{ID: 0, Label: "0"},
@@ -324,15 +296,11 @@ func TestBinomial(t *testing.T) {
 		},
 		{
 			name: "edge label",
-			opts: BinomialOpts{
-				Vertices:   2,
-				N:          1,
-				P:          1,
-				Loops:      false,
-				Multiedges: false,
-				EdgeLabel: func(v0, v1 int) any {
-					return fmt.Sprintf("%v-%v", v0, v1)
-				},
+			v:    2,
+			n:    1,
+			p:    1,
+			edgeLabel: func(v0, v1 int) any {
+				return fmt.Sprintf("%v-%v", v0, v1)
 			},
 			wantVs: []Vertex{
 				{ID: 0},
@@ -346,10 +314,16 @@ func TestBinomial(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := &Binomial{
-				opts: tt.opts,
-				rand: testRand(),
+			b, err := NewBinomial(tt.v, tt.n, tt.p)
+			if err != nil {
+				t.Fatal(err)
 			}
+			b.Loops = tt.loops
+			b.Multiedges = tt.multiedges
+			b.Directed = tt.directed
+			b.VertexLabel = tt.vertexLabel
+			b.EdgeLabel = tt.edgeLabel
+			b.rand = testRand()
 
 			var gotVs []Vertex
 			for v := range b.Vertices() {

@@ -86,16 +86,18 @@ func (r *RandGraph) WriteDOT(w io.Writer) {
 	fmt.Fprintln(w, "}")
 }
 
-// BinomialOpts are the [Binomial] parameters.
-type BinomialOpts struct {
-	// N is the number of trials.
+// Binomial implements the [Source] interface. It generates random
+// graphs in which the number of edges created per vertex follows a
+// binomial distribution.
+type Binomial struct {
+	// V is the number of vertices.
+	V int
+
+	// N is the number of edge creation trials.
 	N int
 
 	// P is the success probability for each trial.
 	P float64
-
-	// Vertices is the number of vertices.
-	Vertices int
 
 	// Loops defines whether loops are allowed.
 	Loops bool
@@ -115,30 +117,29 @@ type BinomialOpts struct {
 	// EdgeLabel specifies an optional function that returns the
 	// label of an edge connecting v0 and v1.
 	EdgeLabel func(v0, v1 int) any
-}
 
-// Binomial implements the [Source] interface. It generates random
-// graphs in which the number of edges created per vertex follows a
-// binomial distribution.
-type Binomial struct {
-	opts BinomialOpts
 	rand *rand.Rand
 }
 
-// NewBinomial returns a new [Binomial] with the provided parameters.
-func NewBinomial(opts BinomialOpts) (*Binomial, error) {
-	if opts.N < 0 {
+// NewBinomial returns a new [Binomial] source that generates graphs
+// with v vertices. The number of edges created per vertex follows the
+// binomial distribution B(n, p), where n is the number of trials and
+// p the success probability for each trial.
+func NewBinomial(v, n int, p float64) (*Binomial, error) {
+	if v < 0 {
+		return nil, errors.New("invalid number of vertices")
+	}
+	if n < 0 {
 		return nil, errors.New("invalid number of trials")
 	}
-	if opts.P < 0 || opts.P > 1 {
+	if p < 0 || p > 1 {
 		return nil, errors.New("invalid success probability")
-	}
-	if opts.Vertices < 0 {
-		return nil, errors.New("invalid number of vertices")
 	}
 
 	b := &Binomial{
-		opts: opts,
+		V:    v,
+		N:    n,
+		P:    p,
 		rand: rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 	return b, nil
@@ -147,10 +148,10 @@ func NewBinomial(opts BinomialOpts) (*Binomial, error) {
 func (b *Binomial) Vertices() <-chan Vertex {
 	ch := make(chan Vertex)
 	go func() {
-		for i := range b.opts.Vertices {
+		for i := range b.V {
 			var label any
-			if b.opts.VertexLabel != nil {
-				label = b.opts.VertexLabel(i)
+			if b.VertexLabel != nil {
+				label = b.VertexLabel(i)
 			}
 			ch <- Vertex{ID: i, Label: label}
 		}
@@ -162,12 +163,12 @@ func (b *Binomial) Vertices() <-chan Vertex {
 func (b *Binomial) Edges() <-chan Edge {
 	ch := make(chan Edge)
 	go func() {
-		for tail := range b.opts.Vertices {
+		for tail := range b.V {
 			var start int
-			if b.opts.Loops {
+			if b.Loops {
 				start = 0
 			} else {
-				if tail == b.opts.Vertices-1 {
+				if tail == b.V-1 {
 					// No possible heads.
 					break
 				}
@@ -175,23 +176,23 @@ func (b *Binomial) Edges() <-chan Edge {
 			}
 
 			heads := make(map[int]struct{})
-			for range b.opts.N {
-				if b.rand.Float64() < b.opts.P {
-					head := start + b.rand.IntN(b.opts.Vertices-start)
-					if !b.opts.Multiedges {
+			for range b.N {
+				if b.rand.Float64() < b.P {
+					head := start + b.rand.IntN(b.V-start)
+					if !b.Multiedges {
 						if _, found := heads[head]; found {
 							continue
 						}
 						heads[head] = struct{}{}
 					}
 					var label any
-					if b.opts.EdgeLabel != nil {
-						label = b.opts.EdgeLabel(tail, head)
+					if b.EdgeLabel != nil {
+						label = b.EdgeLabel(tail, head)
 					}
 					ch <- Edge{
 						V0:       tail,
 						V1:       head,
-						Directed: b.opts.Directed,
+						Directed: b.Directed,
 						Label:    label,
 					}
 				}
