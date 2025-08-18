@@ -370,6 +370,19 @@ func TestBinomial(t *testing.T) {
 	}
 }
 
+func BenchmarkBinomial_Edges(b *testing.B) {
+	bin, err := NewBinomial(1000, 100, 0.75)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for b.Loop() {
+		for range bin.Edges() {
+			// Do nothing.
+		}
+	}
+}
+
 type testSource struct {
 	vertices []Vertex
 	edges    []Edge
