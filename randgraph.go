@@ -25,6 +25,7 @@ type Vertex struct {
 // V0 and V1. If directed, V0 is the tail vertex and V1 is the head
 // vertex.
 type Edge struct {
+	ID       int
 	V0, V1   int
 	Directed bool
 	Label    any
@@ -116,8 +117,8 @@ type Binomial struct {
 	VertexLabel func(id int) any
 
 	// EdgeLabel specifies an optional function that returns the
-	// label of an edge connecting v0 and v1.
-	EdgeLabel func(v0, v1 int) any
+	// label of an edge identified by id that connects v0 and v1.
+	EdgeLabel func(id, v0, v1 int) any
 
 	rand *rand.Rand
 }
@@ -164,6 +165,7 @@ func (b *Binomial) Vertices() <-chan Vertex {
 func (b *Binomial) Edges() <-chan Edge {
 	ch := make(chan Edge)
 	go func() {
+		id := 0
 		for tail := range b.V {
 			var start int
 			if b.Loops {
@@ -188,14 +190,16 @@ func (b *Binomial) Edges() <-chan Edge {
 					}
 					var label any
 					if b.EdgeLabel != nil {
-						label = b.EdgeLabel(tail, head)
+						label = b.EdgeLabel(id, tail, head)
 					}
 					ch <- Edge{
+						ID:       id,
 						V0:       tail,
 						V1:       head,
 						Directed: b.Directed,
 						Label:    label,
 					}
+					id++
 				}
 			}
 		}

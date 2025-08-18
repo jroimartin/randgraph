@@ -44,16 +44,19 @@ func TestRandGraph_Vertices(t *testing.T) {
 func TestRandGraph_Edges(t *testing.T) {
 	want := []Edge{
 		{
+			ID:    0,
 			V0:    0,
 			V1:    1,
 			Label: "e0",
 		},
 		{
+			ID:       1,
 			V0:       1,
 			V1:       2,
 			Directed: true,
 		},
 		{
+			ID:       2,
 			V0:       2,
 			V1:       0,
 			Directed: true,
@@ -91,16 +94,19 @@ func TestRandGraph_WriteDOT(t *testing.T) {
 	}
 	edges := []Edge{
 		{
+			ID:    0,
 			V0:    0,
 			V1:    1,
 			Label: "e0",
 		},
 		{
+			ID:       1,
 			V0:       1,
 			V1:       2,
 			Directed: true,
 		},
 		{
+			ID:       2,
 			V0:       2,
 			V1:       0,
 			Directed: true,
@@ -174,14 +180,14 @@ func TestBinomial(t *testing.T) {
 		multiedges  bool
 		directed    bool
 		vertexLabel func(id int) any
-		edgeLabel   func(v0, v1 int) any
+		edgeLabel   func(id, v0, v1 int) any
 		wantVs      []Vertex
 		wantEs      []Edge
 	}{
 		{
 			name:       "1 vertex with loops and multiedges",
 			v:          1,
-			n:          2,
+			n:          5,
 			p:          1,
 			loops:      true,
 			multiedges: true,
@@ -189,14 +195,17 @@ func TestBinomial(t *testing.T) {
 				{ID: 0},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 0},
-				{V0: 0, V1: 0},
+				{ID: 0, V0: 0, V1: 0},
+				{ID: 1, V0: 0, V1: 0},
+				{ID: 2, V0: 0, V1: 0},
+				{ID: 3, V0: 0, V1: 0},
+				{ID: 4, V0: 0, V1: 0},
 			},
 		},
 		{
 			name:       "1 vertex with multiedges",
 			v:          1,
-			n:          2,
+			n:          5,
 			p:          1,
 			multiedges: true,
 			wantVs: []Vertex{
@@ -207,7 +216,7 @@ func TestBinomial(t *testing.T) {
 		{
 			name: "1 vertex",
 			v:    1,
-			n:    2,
+			n:    5,
 			p:    1,
 			wantVs: []Vertex{
 				{ID: 0},
@@ -217,7 +226,7 @@ func TestBinomial(t *testing.T) {
 		{
 			name:       "2 vertices with multiedges",
 			v:          2,
-			n:          2,
+			n:          5,
 			p:          1,
 			multiedges: true,
 			wantVs: []Vertex{
@@ -225,27 +234,44 @@ func TestBinomial(t *testing.T) {
 				{ID: 1},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 1},
-				{V0: 0, V1: 1},
+				{ID: 0, V0: 0, V1: 1},
+				{ID: 1, V0: 0, V1: 1},
+				{ID: 2, V0: 0, V1: 1},
+				{ID: 3, V0: 0, V1: 1},
+				{ID: 4, V0: 0, V1: 1},
 			},
 		},
 		{
 			name: "2 vertices",
 			v:    2,
-			n:    2,
+			n:    5,
 			p:    1,
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 1},
+				{ID: 0, V0: 0, V1: 1},
 			},
 		},
 		{
-			name: "edgeless",
+			name: "edgeless with n=0",
 			v:    5,
 			n:    0,
+			p:    1,
+			wantVs: []Vertex{
+				{ID: 0},
+				{ID: 1},
+				{ID: 2},
+				{ID: 3},
+				{ID: 4},
+			},
+			wantEs: []Edge{},
+		},
+		{
+			name: "edgeless with p=0",
+			v:    5,
+			n:    5,
 			p:    0,
 			wantVs: []Vertex{
 				{ID: 0},
@@ -259,7 +285,7 @@ func TestBinomial(t *testing.T) {
 		{
 			name:   "order zero",
 			v:      0,
-			n:      1,
+			n:      5,
 			p:      1,
 			wantVs: []Vertex{},
 			wantEs: []Edge{},
@@ -275,7 +301,7 @@ func TestBinomial(t *testing.T) {
 				{ID: 1},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 1, Directed: true},
+				{ID: 0, V0: 0, V1: 1, Directed: true},
 			},
 		},
 		{
@@ -291,7 +317,7 @@ func TestBinomial(t *testing.T) {
 				{ID: 1, Label: "1"},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 1},
+				{ID: 0, V0: 0, V1: 1},
 			},
 		},
 		{
@@ -299,15 +325,15 @@ func TestBinomial(t *testing.T) {
 			v:    2,
 			n:    1,
 			p:    1,
-			edgeLabel: func(v0, v1 int) any {
-				return fmt.Sprintf("%v-%v", v0, v1)
+			edgeLabel: func(id, v0, v1 int) any {
+				return fmt.Sprintf("%v-%v-%v", id, v0, v1)
 			},
 			wantVs: []Vertex{
 				{ID: 0},
 				{ID: 1},
 			},
 			wantEs: []Edge{
-				{V0: 0, V1: 1, Label: "0-1"},
+				{ID: 0, V0: 0, V1: 1, Label: "0-0-1"},
 			},
 		},
 	}
