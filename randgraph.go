@@ -166,6 +166,7 @@ func (b *Binomial) Edges() <-chan Edge {
 	ch := make(chan Edge)
 	go func() {
 		id := 0
+		heads := make(map[int]struct{})
 		for tail := range b.V {
 			var start int
 			if b.Loops {
@@ -178,7 +179,10 @@ func (b *Binomial) Edges() <-chan Edge {
 				start = tail + 1
 			}
 
-			heads := make(map[int]struct{})
+			// We create a single map and clear it on each
+			// iteration to minimize memory allocations.
+			clear(heads)
+
 			for range b.N {
 				if b.rand.Float64() < b.P {
 					head := start + b.rand.IntN(b.V-start)
