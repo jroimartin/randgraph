@@ -163,7 +163,7 @@ func (b *Binomial) Vertices() <-chan Vertex {
 }
 
 func (b *Binomial) Edges() <-chan Edge {
-	ch := make(chan Edge, b.N)
+	ch := make(chan Edge)
 	go func() {
 		id := 0
 		heads := make(map[int]struct{})
